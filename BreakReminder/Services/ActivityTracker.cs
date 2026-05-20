@@ -176,6 +176,14 @@ public sealed class ActivityTracker
             IsActive = false;
             IsIdle = true;
             // 不累计工作时间
+
+            // 空闲超过休息时长 → 视为已完成休息，自动重置
+            double breakSeconds = _settings.BreakDurationMinutes * 60.0;
+            if (WorkedSeconds > 0 && secondsSinceLastInput >= breakSeconds)
+            {
+                Debug.WriteLine($"[ActivityTracker] Idle {secondsSinceLastInput:F0}s >= break {breakSeconds}s, auto-reset.");
+                Reset();
+            }
         }
 
         // 检查是否达到工作时长
