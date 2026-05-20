@@ -1,0 +1,26 @@
+<Application x:Class="BreakReminder.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:tb="clr-namespace:H.NotifyIcon;assembly=H.NotifyIcon.Wpf"
+             ShutdownMode="OnExplicitShutdown">
+    <Application.Resources>
+        <!-- 系统托盘右键菜单 -->
+        <ContextMenu x:Key="TrayContextMenu">
+            <MenuItem Header="⏱ 状态" IsEnabled="False" x:Name="StatusMenuItem" />
+            <Separator />
+            <MenuItem Header="⚙ 设置" Click="OnSettingsClick" />
+            <MenuItem Header="🔄 立即休息" Click="OnForceBreakClick" />
+            <MenuItem Header="⏸ 暂停" x:Name="PauseMenuItem" Click="OnPauseResumeClick" />
+            <MenuItem Header="🔄 重置计时" Click="OnResetClick" />
+            <Separator />
+            <MenuItem Header="❌ 退出" Click="OnExitClick" />
+        </ContextMenu>
+
+        <!-- 托盘图标 -->
+        <tb:TaskbarIcon x:Key="TrayIcon"
+                        IconSource="/Resources/app.ico"
+                        ToolTipText="番茄闹钟 - 休息提醒器"
+                        ContextMenu="{StaticResource TrayContextMenu}"
+                        TrayLeftMouseDown="OnTrayLeftMouseDown" />
+    </Application.Resources>
+</Application>

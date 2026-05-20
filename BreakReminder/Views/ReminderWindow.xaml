@@ -1,0 +1,185 @@
+<Window x:Class="BreakReminder.Views.ReminderWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="休息提醒"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Topmost="True"
+        ShowInTaskbar="False"
+        Background="Transparent">
+
+    <Window.Resources>
+        <!-- ── 色彩 ── -->
+        <SolidColorBrush x:Key="AccentBrush"      Color="#FF6B6B"/>
+        <SolidColorBrush x:Key="AccentHoverBrush"  Color="#FF8787"/>
+        <SolidColorBrush x:Key="FgPrimary"         Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="FgSecondary"       Color="#D0D0E0"/>
+        <SolidColorBrush x:Key="BorderSubtle"      Color="#55FFFFFF"/>
+
+        <!-- ── 主按钮样式 ── -->
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Background"  Value="{StaticResource AccentBrush}"/>
+            <Setter Property="Foreground"  Value="White"/>
+            <Setter Property="FontSize"    Value="15"/>
+            <Setter Property="FontWeight"  Value="SemiBold"/>
+            <Setter Property="Padding"     Value="32,12"/>
+            <Setter Property="Cursor"      Value="Hand"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.85"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ── 次级按钮样式 ── -->
+        <Style x:Key="SecondaryButton" TargetType="Button">
+            <Setter Property="Background"  Value="Transparent"/>
+            <Setter Property="Foreground"  Value="{StaticResource FgPrimary}"/>
+            <Setter Property="FontSize"    Value="15"/>
+            <Setter Property="Padding"     Value="32,12"/>
+            <Setter Property="Cursor"      Value="Hand"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderSubtle}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#22FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <!-- ── 入场动画 ── -->
+    <Window.Triggers>
+        <EventTrigger RoutedEvent="Window.Loaded">
+            <BeginStoryboard>
+                <Storyboard>
+                    <!-- 整体淡入 -->
+                    <DoubleAnimation Storyboard.TargetName="RootGrid"
+                                     Storyboard.TargetProperty="Opacity"
+                                     From="0" To="1" Duration="0:0:0.4">
+                        <DoubleAnimation.EasingFunction>
+                            <CubicEase EasingMode="EaseOut"/>
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                    <!-- 卡片缩放 -->
+                    <DoubleAnimation Storyboard.TargetName="CardScale"
+                                     Storyboard.TargetProperty="ScaleX"
+                                     From="0.85" To="1" Duration="0:0:0.35">
+                        <DoubleAnimation.EasingFunction>
+                            <CubicEase EasingMode="EaseOut"/>
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                    <DoubleAnimation Storyboard.TargetName="CardScale"
+                                     Storyboard.TargetProperty="ScaleY"
+                                     From="0.85" To="1" Duration="0:0:0.35">
+                        <DoubleAnimation.EasingFunction>
+                            <CubicEase EasingMode="EaseOut"/>
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                </Storyboard>
+            </BeginStoryboard>
+        </EventTrigger>
+    </Window.Triggers>
+
+    <!-- ── 全屏半透明覆盖 ── -->
+    <Grid x:Name="RootGrid" Opacity="0">
+        <!-- 暗色遮罩 -->
+        <Rectangle Fill="#1A1A2E" Opacity="0.88"/>
+
+        <!-- 居中卡片 -->
+        <Border Width="400" Height="360"
+                HorizontalAlignment="Center" VerticalAlignment="Center"
+                CornerRadius="16"
+                RenderTransformOrigin="0.5,0.5">
+            <Border.RenderTransform>
+                <ScaleTransform x:Name="CardScale" ScaleX="1" ScaleY="1"/>
+            </Border.RenderTransform>
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#2A2A3D" Offset="0"/>
+                    <GradientStop Color="#1E1E2E" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="40" ShadowDepth="0"
+                                  Color="#FF6B6B" Opacity="0.25"/>
+            </Border.Effect>
+
+            <Grid Margin="32,28">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>  <!-- 番茄图标 -->
+                    <RowDefinition Height="Auto"/>  <!-- 标题 -->
+                    <RowDefinition Height="Auto"/>  <!-- 工作时间 -->
+                    <RowDefinition Height="Auto"/>  <!-- 休息建议 -->
+                    <RowDefinition Height="*"/>     <!-- 倒计时 -->
+                    <RowDefinition Height="Auto"/>  <!-- 按钮 -->
+                </Grid.RowDefinitions>
+
+                <!-- 番茄图标 -->
+                <TextBlock Grid.Row="0" Text="🍅" FontSize="48"
+                           HorizontalAlignment="Center" Margin="0,0,0,8"/>
+
+                <!-- 标题 -->
+                <TextBlock Grid.Row="1" Text="该休息了！"
+                           Foreground="{StaticResource FgPrimary}"
+                           FontSize="26" FontWeight="Bold"
+                           HorizontalAlignment="Center" Margin="0,0,0,16"/>
+
+                <!-- 已工作时间 -->
+                <TextBlock Grid.Row="2" Text="{Binding WorkedTimeText}"
+                           Foreground="{StaticResource FgSecondary}"
+                           FontSize="14" HorizontalAlignment="Center" Margin="0,0,0,4"/>
+
+                <!-- 休息建议 -->
+                <TextBlock Grid.Row="3" Text="{Binding BreakSuggestionText}"
+                           Foreground="{StaticResource FgSecondary}"
+                           FontSize="14" HorizontalAlignment="Center" Margin="0,0,0,16"/>
+
+                <!-- 倒计时 -->
+                <TextBlock Grid.Row="4" Text="{Binding CountdownText}"
+                           Foreground="{StaticResource AccentBrush}"
+                           FontSize="52" FontWeight="Bold"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                <!-- 操作按钮 -->
+                <StackPanel Grid.Row="5" Orientation="Horizontal"
+                            HorizontalAlignment="Center" Margin="0,12,0,0">
+                    <Button Content="知道了"   Style="{StaticResource PrimaryButton}"
+                            Command="{Binding DismissCommand}" Margin="0,0,16,0"/>
+                    <Button Content="推迟 5 分钟" Style="{StaticResource SecondaryButton}"
+                            Command="{Binding SnoozeCommand}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
