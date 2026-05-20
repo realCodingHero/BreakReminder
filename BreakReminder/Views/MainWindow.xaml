@@ -1,0 +1,355 @@
+<Window x:Class="BreakReminder.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:BreakReminder.Views"
+        Title="番茄闹钟"
+        Width="380" Height="510"
+        WindowStyle="None"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="#1E1E2E">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="AccentBrush"     Color="#FF6B6B"/>
+        <SolidColorBrush x:Key="AccentHoverBrush" Color="#FF8787"/>
+        <SolidColorBrush x:Key="BgCard"           Color="#2A2A3D"/>
+        <SolidColorBrush x:Key="FgPrimary"        Color="#EAEAEA"/>
+        <SolidColorBrush x:Key="FgSecondary"      Color="#A0A0B8"/>
+        <SolidColorBrush x:Key="BorderSubtle"     Color="#3A3A50"/>
+        <SolidColorBrush x:Key="ProgressTrack"    Color="#33FFFFFF"/>
+        <SolidColorBrush x:Key="DrawerBg"         Color="#252538"/>
+
+        <!-- 按钮模板 -->
+        <Style x:Key="ActionButton" TargetType="Button">
+            <Setter Property="Foreground"  Value="{StaticResource FgPrimary}"/>
+            <Setter Property="FontSize"    Value="13"/>
+            <Setter Property="Cursor"      Value="Hand"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding"     Value="20,9"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.85"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.7"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- CheckBox 样式 -->
+        <Style x:Key="DrawerCheckBox" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{StaticResource FgPrimary}"/>
+            <Setter Property="FontSize"   Value="12.5"/>
+            <Setter Property="Margin"     Value="0,3"/>
+            <Setter Property="Cursor"     Value="Hand"/>
+        </Style>
+
+        <!-- Slider 样式 -->
+        <Style x:Key="DrawerSlider" TargetType="Slider">
+            <Setter Property="Foreground"  Value="{StaticResource AccentBrush}"/>
+            <Setter Property="Minimum"     Value="5"/>
+            <Setter Property="IsSnapToTickEnabled" Value="True"/>
+            <Setter Property="TickFrequency" Value="5"/>
+            <Setter Property="Height"      Value="20"/>
+            <Setter Property="Margin"      Value="0,1,0,0"/>
+        </Style>
+
+        <!-- 缓动函数（必须在 Storyboard 之前定义） -->
+        <CubicEase x:Key="DrawerEase" EasingMode="EaseOut"/>
+
+        <!-- 抽屉动画 -->
+        <Storyboard x:Key="OpenDrawer">
+            <DoubleAnimation Storyboard.TargetName="DrawerTranslate"
+                             Storyboard.TargetProperty="X"
+                             To="0" Duration="0:0:0.25">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="Backdrop"
+                             Storyboard.TargetProperty="Opacity"
+                             To="1" Duration="0:0:0.2"/>
+        </Storyboard>
+        <Storyboard x:Key="CloseDrawer">
+            <DoubleAnimation Storyboard.TargetName="DrawerTranslate"
+                             Storyboard.TargetProperty="X"
+                             To="380" Duration="0:0:0.2">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="Backdrop"
+                             Storyboard.TargetProperty="Opacity"
+                             To="0" Duration="0:0:0.15"/>
+        </Storyboard>
+    </Window.Resources>
+
+    <!-- 根容器：固定高度的 Grid 用于层叠主内容和抽屉 -->
+    <Grid x:Name="RootGrid" ClipToBounds="True">
+
+        <!-- ══ 层 1: 主界面 ══ -->
+        <Border Padding="28,24">
+            <StackPanel>
+                <!-- 自定义标题栏 (可拖拽) -->
+                <Grid Margin="0,0,0,14">
+                    <!-- 透明模式 (左) -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <Button Background="Transparent" Foreground="{StaticResource FgSecondary}"
+                                FontSize="16" Cursor="Hand" BorderThickness="0"
+                                Padding="4,2" Click="OnCompactClick"
+                                Content="📌" ToolTip="透明悬浮模式"/>
+                    </StackPanel>
+                    <!-- 标题 (居中) -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <TextBlock Text="🍅" FontSize="20" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="番茄闹钟" Foreground="{StaticResource FgPrimary}"
+                                   FontSize="17" FontWeight="Bold" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <!-- 设置 + 关闭 (右) -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Background="Transparent" Foreground="{StaticResource FgSecondary}"
+                                FontSize="20" Cursor="Hand" BorderThickness="0"
+                                Padding="4,2" Click="OnSettingsClick"
+                                Content="☰" ToolTip="设置"/>
+                        <Button Background="Transparent" Foreground="{StaticResource FgSecondary}"
+                                FontSize="14" Cursor="Hand" BorderThickness="0"
+                                Padding="6,2" Click="OnCloseClick"
+                                Content="✕" ToolTip="隐藏到托盘"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- 状态 -->
+                <TextBlock Text="{Binding StatusEmoji}" FontSize="36"
+                           HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                <TextBlock Text="{Binding StatusText}" FontSize="14"
+                           Foreground="{StaticResource FgSecondary}"
+                           HorizontalAlignment="Center" Margin="0,0,0,16"/>
+
+                <!-- 倒计时卡片 -->
+                <Border Background="{StaticResource BgCard}" CornerRadius="12" Padding="24,20" Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Text="距离休息" FontSize="12"
+                                   Foreground="{StaticResource FgSecondary}"
+                                   HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                        <TextBlock Text="{Binding RemainingTimeText}" FontSize="48" FontWeight="Bold"
+                                   Foreground="{StaticResource AccentBrush}"
+                                   HorizontalAlignment="Center" Margin="0,0,0,12"
+                                   FontFamily="Consolas, Cascadia Mono, monospace"/>
+
+                        <!-- 进度条 -->
+                        <Grid Height="6" Margin="0,0,0,12">
+                            <Border Background="{StaticResource ProgressTrack}" CornerRadius="3"/>
+                            <Border Background="{StaticResource AccentBrush}" CornerRadius="3"
+                                    HorizontalAlignment="Left">
+                                <Border.Width>
+                                    <MultiBinding Converter="{x:Static local:ProgressToWidthConverter.Instance}">
+                                        <Binding Path="Progress"/>
+                                        <Binding Path="ActualWidth"
+                                                 RelativeSource="{RelativeSource AncestorType=Grid}"/>
+                                    </MultiBinding>
+                                </Border.Width>
+                            </Border>
+                        </Grid>
+
+                        <TextBlock Foreground="{StaticResource FgSecondary}" FontSize="12">
+                            <Run Text="已工作  "/>
+                            <Run Text="{Binding WorkedTimeText, Mode=OneWay}"
+                                 Foreground="{StaticResource FgPrimary}" FontWeight="SemiBold"/>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <!-- 操作按钮 -->
+                <Grid Margin="0,4,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Button Grid.Column="0" Content="{Binding PauseButtonText}"
+                            Background="{StaticResource BgCard}"
+                            Style="{StaticResource ActionButton}"
+                            Command="{Binding PauseResumeCommand}"/>
+                    <Button Grid.Column="2" Content="🔄  重置"
+                            Background="#44FF6B6B"
+                            Style="{StaticResource ActionButton}"
+                            Command="{Binding ResetCommand}"/>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- ══ 层 2: 半透明遮罩 ══ -->
+        <Border x:Name="Backdrop" Background="#80000000" Opacity="0"
+                Visibility="Collapsed" MouseLeftButtonDown="OnBackdropClick"/>
+
+        <!-- ══ 层 3: 设置抽屉 ══ -->
+        <Border x:Name="DrawerPanel" Background="{StaticResource DrawerBg}"
+                Visibility="Collapsed"
+                HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Border.RenderTransform>
+                <TranslateTransform x:Name="DrawerTranslate" X="380"/>
+            </Border.RenderTransform>
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- 抽屉标题 -->
+                <Border Grid.Row="0" Padding="20,16,20,10"
+                        BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,0,1">
+                    <Grid>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="⚙" FontSize="16" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock Text="设置" Foreground="{StaticResource FgPrimary}"
+                                       FontSize="17" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <Button Content="✕" HorizontalAlignment="Right"
+                                Background="Transparent" Foreground="{StaticResource FgSecondary}"
+                                FontSize="16" Cursor="Hand" BorderThickness="0"
+                                Padding="4,0" Click="OnDrawerClose"/>
+                    </Grid>
+                </Border>
+
+                <!-- 抽屉内容 (ScrollViewer 保险) -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="20,8,20,8">
+                    <StackPanel x:Name="DrawerContent">
+
+                        <!-- 计时设置 -->
+                        <TextBlock Text="⏱ 计时设置" Foreground="{StaticResource AccentBrush}"
+                                   FontSize="13" FontWeight="SemiBold" Margin="0,8,0,6"/>
+
+                        <!-- 工作时长 -->
+                        <Grid Margin="0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="36"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="工作时长（分钟）" Foreground="{StaticResource FgPrimary}" FontSize="12"/>
+                                <Slider x:Name="SliderWork" Style="{StaticResource DrawerSlider}" Maximum="120"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="{Binding Value, ElementName=SliderWork, StringFormat={}{0:0}}"
+                                       Foreground="{StaticResource AccentBrush}" FontSize="16" FontWeight="Bold"
+                                       HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <!-- 休息时长 -->
+                        <Grid Margin="0,5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="36"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="休息时长（分钟）" Foreground="{StaticResource FgPrimary}" FontSize="12"/>
+                                <Slider x:Name="SliderBreak" Style="{StaticResource DrawerSlider}" Maximum="30"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="{Binding Value, ElementName=SliderBreak, StringFormat={}{0:0}}"
+                                       Foreground="{StaticResource AccentBrush}" FontSize="16" FontWeight="Bold"
+                                       HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <!-- 空闲阈值 -->
+                        <Grid Margin="0,5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="36"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="空闲阈值（分钟）" Foreground="{StaticResource FgPrimary}" FontSize="12"/>
+                                <Slider x:Name="SliderIdle" Style="{StaticResource DrawerSlider}" Maximum="30"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="{Binding Value, ElementName=SliderIdle, StringFormat={}{0:0}}"
+                                       Foreground="{StaticResource AccentBrush}" FontSize="16" FontWeight="Bold"
+                                       HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <!-- 推迟时长 -->
+                        <Grid Margin="0,5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="36"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="推迟时长（分钟）" Foreground="{StaticResource FgPrimary}" FontSize="12"/>
+                                <Slider x:Name="SliderSnooze" Style="{StaticResource DrawerSlider}" Maximum="30"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="{Binding Value, ElementName=SliderSnooze, StringFormat={}{0:0}}"
+                                       Foreground="{StaticResource AccentBrush}" FontSize="16" FontWeight="Bold"
+                                       HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <Border Height="1" Background="{StaticResource BorderSubtle}" Margin="0,8"/>
+
+                        <!-- 提醒方式 + 监控项目 (并排) -->
+                        <Grid Margin="0,4,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="14"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- 左: 提醒方式 -->
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="🔔 提醒" Foreground="{StaticResource AccentBrush}"
+                                           FontSize="12" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                <CheckBox x:Name="ChkToast"  Style="{StaticResource DrawerCheckBox}" Content="Toast"/>
+                                <CheckBox x:Name="ChkPopup"  Style="{StaticResource DrawerCheckBox}" Content="弹窗"/>
+                                <CheckBox x:Name="ChkSound"  Style="{StaticResource DrawerCheckBox}" Content="声音"/>
+                            </StackPanel>
+
+                            <!-- 右: 监控项目 -->
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="👁 监控" Foreground="{StaticResource AccentBrush}"
+                                           FontSize="12" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                <CheckBox x:Name="ChkKeyboard" Style="{StaticResource DrawerCheckBox}" Content="键盘"/>
+                                <CheckBox x:Name="ChkMouse"    Style="{StaticResource DrawerCheckBox}" Content="鼠标"/>
+                                <CheckBox x:Name="ChkMedia"    Style="{StaticResource DrawerCheckBox}" Content="媒体"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Border Height="1" Background="{StaticResource BorderSubtle}" Margin="0,8"/>
+
+                        <!-- 其他 -->
+                        <CheckBox x:Name="ChkAutoStart" Style="{StaticResource DrawerCheckBox}"
+                                  Content="⚙ 开机自动启动" Margin="0,2,0,4"/>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- 底部按钮 -->
+                <Border Grid.Row="2" Padding="20,10,20,16"
+                        BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,1,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0" Content="取消"
+                                Background="{StaticResource BgCard}"
+                                Style="{StaticResource ActionButton}" Click="OnDrawerClose"/>
+                        <Button Grid.Column="2" Content="保存"
+                                Background="{StaticResource AccentBrush}"
+                                Style="{StaticResource ActionButton}" Click="OnDrawerSave"/>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+
+    </Grid>
+</Window>
