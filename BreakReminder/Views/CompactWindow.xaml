@@ -39,13 +39,14 @@
                 </Button.Clip>
             </Button>
 
-            <!-- 暂停/继续 (常驻, 倒计时左边) -->
+            <!-- 暂停/继续 (灵动岛展开时可见，锁定时隐藏) -->
             <Button x:Name="PauseButton" Grid.Column="1" Content="⏸" FontSize="13"
-                    Width="24" Height="24" Padding="0"
+                    Width="0" Height="24" Padding="0"
                     VerticalAlignment="Center" Margin="0,0,4,0"
                     Background="Transparent" Foreground="#A0A0B8"
                     BorderThickness="0" Cursor="Hand"
-                    Click="OnPauseClick" ToolTip="暂停"/>
+                    Opacity="0" IsHitTestVisible="False"
+                    Click="OnPauseClick" ToolTip="{DynamicResource Pause}"/>
 
             <!-- 倒计时：普通显示 -->
             <TextBlock x:Name="CountdownText" Grid.Column="2"
@@ -79,13 +80,14 @@
                         VerticalAlignment="Center" Click="OnEditCancel"/>
             </StackPanel>
 
-            <!-- 重置 (常驻, 倒计时右边) -->
+            <!-- 重置 (灵动岛展开时可见，锁定时隐藏) -->
             <Button x:Name="ResetButton" Grid.Column="3" Content="🔄" FontSize="13"
-                    Width="24" Height="24" Padding="0"
+                    Width="0" Height="24" Padding="0"
                     VerticalAlignment="Center" Margin="4,0,0,0"
                     Background="Transparent" Foreground="#A0A0B8"
                     BorderThickness="0" Cursor="Hand"
-                    Click="OnResetClick" ToolTip="重置"/>
+                    Opacity="0" IsHitTestVisible="False"
+                    Click="OnResetClick" ToolTip="{DynamicResource Reset}"/>
 
             <!-- 返回按钮 (灵动岛展开时可见) -->
             <Button x:Name="ExpandButton" Grid.Column="4" Content="⬜" FontSize="12"

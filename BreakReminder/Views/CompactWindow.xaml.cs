@@ -171,6 +171,15 @@ public partial class CompactWindow : Window
 
         if (!lockOnly)
         {
+            // 非锁定模式：展示暂停/重置/返回按钮
+            AnimateWidth(PauseButton, 0, 24);
+            AnimateOpacity(PauseButton, 0, 1);
+            PauseButton.IsHitTestVisible = true;
+
+            AnimateWidth(ResetButton, 0, 24);
+            AnimateOpacity(ResetButton, 0, 1);
+            ResetButton.IsHitTestVisible = true;
+
             AnimateWidth(ExpandButton, 0, BTN_WIDTH);
             AnimateOpacity(ExpandButton, 0, 1);
             ExpandButton.IsHitTestVisible = true;
@@ -190,6 +199,15 @@ public partial class CompactWindow : Window
         AnimateWidth(LockButton, BTN_WIDTH, 0, widthAnim);
         AnimateOpacity(LockButton, 1, 0);
         LockButton.IsHitTestVisible = false;
+
+        // 暂停/重置按钮安全收起
+        AnimateWidth(PauseButton, PauseButton.ActualWidth, 0);
+        AnimateOpacity(PauseButton, PauseButton.Opacity, 0);
+        PauseButton.IsHitTestVisible = false;
+
+        AnimateWidth(ResetButton, ResetButton.ActualWidth, 0);
+        AnimateOpacity(ResetButton, ResetButton.Opacity, 0);
+        ResetButton.IsHitTestVisible = false;
 
         // ExpandButton 可能没展开过（锁定模式），安全收起
         AnimateWidth(ExpandButton, ExpandButton.ActualWidth, 0);
@@ -422,7 +440,15 @@ public partial class CompactWindow : Window
             // 解锁后保持展开状态，展示全部按钮
             if (_isExpanded)
             {
-                // 已经展开了（锁按钮可见），补充展开返回按钮
+                // 已经展开了（锁按钮可见），补充展开暂停/重置/返回按钮
+                AnimateWidth(PauseButton, 0, 24);
+                AnimateOpacity(PauseButton, 0, 1);
+                PauseButton.IsHitTestVisible = true;
+
+                AnimateWidth(ResetButton, 0, 24);
+                AnimateOpacity(ResetButton, 0, 1);
+                ResetButton.IsHitTestVisible = true;
+
                 AnimateWidth(ExpandButton, 0, BTN_WIDTH);
                 AnimateOpacity(ExpandButton, 0, 1);
                 ExpandButton.IsHitTestVisible = true;
