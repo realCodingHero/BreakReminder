@@ -58,11 +58,17 @@ public class MainViewModel : ViewModelBase
         set
         {
             if (SetProperty(ref _isPaused, value))
+            {
                 OnPropertyChanged(nameof(PauseButtonText));
+                OnPropertyChanged(nameof(PauseButtonIcon));
+                OnPropertyChanged(nameof(PauseButtonLabel));
+            }
         }
     }
 
-    public string PauseButtonText => IsPaused ? "▶  继续" : "⏸  暂停";
+    public string PauseButtonText => IsPaused ? LocalizationService.Get("ResumeFull") : LocalizationService.Get("PauseFull");
+    public string PauseButtonIcon => IsPaused ? "▶" : "⏸";
+    public string PauseButtonLabel => IsPaused ? LocalizationService.Get("Resume") : LocalizationService.Get("Pause");
 
     public RelayCommand ResetCommand { get; }
     public RelayCommand PauseResumeCommand { get; }
@@ -101,22 +107,27 @@ public class MainViewModel : ViewModelBase
 
         if (IsPaused)
         {
-            StatusText = "已暂停";
+            StatusText = LocalizationService.Get("StatusPaused");
             StatusEmoji = "⏸";
+        }
+        else if (_tracker.IsWaitingForActivity)
+        {
+            StatusText = LocalizationService.Get("StatusResetWait");
+            StatusEmoji = "☕";
         }
         else if (_tracker.IsIdle)
         {
-            StatusText = "空闲中";
+            StatusText = LocalizationService.Get("StatusIdle");
             StatusEmoji = "😴";
         }
         else if (_tracker.IsActive)
         {
-            StatusText = "工作中";
+            StatusText = LocalizationService.Get("StatusWorking");
             StatusEmoji = "💻";
         }
         else
         {
-            StatusText = "监控中";
+            StatusText = LocalizationService.Get("StatusMonitoring");
             StatusEmoji = "⏱";
         }
     }

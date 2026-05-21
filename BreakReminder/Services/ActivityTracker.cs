@@ -36,6 +36,9 @@ public sealed class ActivityTracker
     /// <summary>追踪是否已被手动暂停</summary>
     public bool IsPaused { get; private set; }
 
+    /// <summary>自动重置后等待用户归来</summary>
+    public bool IsWaitingForActivity { get; private set; }
+
     // ======================================================================
     //  Events
     // ======================================================================
@@ -104,6 +107,17 @@ public sealed class ActivityTracker
         StatusChanged?.Invoke();
     }
 
+    /// <summary>手动调整本次剩余分钟数</summary>
+    public void SetRemainingMinutes(int minutes)
+    {
+        int remainingSeconds = Math.Max(0, minutes * 60);
+        WorkedSeconds = Math.Max(0, _targetSeconds - remainingSeconds);
+        _breakEventFired = WorkedSeconds >= _targetSeconds;
+
+        Debug.WriteLine($"[ActivityTracker] Remaining set to {minutes} min (worked={WorkedSeconds}s).");
+        StatusChanged?.Invoke();
+    }
+
     /// <summary>贪睡：在当前目标上追加 SnoozeDurationMinutes</summary>
     public void Snooze()
     {
@@ -165,10 +179,21 @@ public sealed class ActivityTracker
 
         if (isInputActive || isMediaActive)
         {
-            // 用户活跃
-            IsActive = true;
-            IsIdle = false;
-            WorkedSeconds++;
+            if (IsWaitingForActivity)
+            {
+                // 用户回来了，结束等待，下一个 tick 开始计时
+                IsWaitingForActivity = false;
+                IsActive = true;
+                IsIdle = false;
+                Debug.WriteLine("[ActivityTracker] User returned, start counting.");
+            }
+            else
+            {
+                // 正常活跃：累计工作时间
+                IsActive = true;
+                IsIdle = false;
+                WorkedSeconds++;
+            }
         }
         else if (secondsSinceLastInput >= idleThresholdSeconds)
         {
@@ -177,12 +202,13 @@ public sealed class ActivityTracker
             IsIdle = true;
             // 不累计工作时间
 
-            // 空闲超过休息时长 → 视为已完成休息，自动重置
+            // 空闲超过休息时长 → 视为已完成休息，自动重置并等待
             double breakSeconds = _settings.BreakDurationMinutes * 60.0;
             if (WorkedSeconds > 0 && secondsSinceLastInput >= breakSeconds)
             {
-                Debug.WriteLine($"[ActivityTracker] Idle {secondsSinceLastInput:F0}s >= break {breakSeconds}s, auto-reset.");
+                Debug.WriteLine($"[ActivityTracker] Idle {secondsSinceLastInput:F0}s >= break {breakSeconds}s, auto-reset + wait.");
                 Reset();
+                IsWaitingForActivity = true;
             }
         }
 

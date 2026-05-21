@@ -4,39 +4,101 @@
         WindowStyle="None" AllowsTransparency="True"
         Background="Transparent" Topmost="True"
         ShowInTaskbar="False"
-        Width="180" Height="52"
+        SizeToContent="Width" Height="48"
         ResizeMode="NoResize">
 
-    <Border x:Name="RootBorder" CornerRadius="14" Padding="14,6"
+    <Border x:Name="RootBorder" CornerRadius="24" Padding="16,6"
             Background="#CC1E1E2E"
             MouseEnter="OnMouseEnterRoot" MouseLeave="OnMouseLeaveRoot"
             MouseLeftButtonDown="OnRootMouseDown" MouseMove="OnRootMouseMove"
             MouseLeftButtonUp="OnRootMouseUp">
         <Grid>
-            <!-- Hover: 锁定按钮 (左) -->
-            <Button x:Name="LockButton" Content="🔓" FontSize="14"
-                    Width="26" Height="26" Padding="0"
-                    HorizontalAlignment="Left" VerticalAlignment="Center"
+            <Grid.ColumnDefinitions>
+                <!-- 锁定按钮 (灵动岛展开) -->
+                <ColumnDefinition Width="Auto"/>
+                <!-- 暂停按钮 (常驻) -->
+                <ColumnDefinition Width="Auto"/>
+                <!-- 倒计时 / 编辑 -->
+                <ColumnDefinition Width="Auto"/>
+                <!-- 重置按钮 (常驻) -->
+                <ColumnDefinition Width="Auto"/>
+                <!-- 返回按钮 (灵动岛展开) -->
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 锁定按钮 (灵动岛展开时可见) -->
+            <Button x:Name="LockButton" Grid.Column="0" Content="🔓" FontSize="14"
+                    Width="0" Height="26" Padding="0"
+                    VerticalAlignment="Center"
                     Background="Transparent" Foreground="#A0A0B8"
                     BorderThickness="0" Cursor="Hand"
                     Opacity="0" IsHitTestVisible="False"
-                    Click="OnLockToggle" ToolTip="锁定位置"/>
+                    Click="OnLockToggle" ToolTip="锁定位置">
+                <Button.Clip>
+                    <RectangleGeometry Rect="0,0,0,26"/>
+                </Button.Clip>
+            </Button>
 
-            <!-- 倒计时文字 (始终可见) -->
-            <TextBlock x:Name="CountdownText"
-                       Text="45:00" FontSize="22" FontWeight="Bold"
+            <!-- 暂停/继续 (常驻, 倒计时左边) -->
+            <Button x:Name="PauseButton" Grid.Column="1" Content="⏸" FontSize="13"
+                    Width="24" Height="24" Padding="0"
+                    VerticalAlignment="Center" Margin="0,0,4,0"
+                    Background="Transparent" Foreground="#A0A0B8"
+                    BorderThickness="0" Cursor="Hand"
+                    Click="OnPauseClick" ToolTip="暂停"/>
+
+            <!-- 倒计时：普通显示 -->
+            <TextBlock x:Name="CountdownText" Grid.Column="2"
+                       Text="45:00" FontSize="20" FontWeight="Bold"
                        Foreground="#FF6B6B"
                        FontFamily="Consolas, Cascadia Mono, monospace"
-                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Margin="4,0"
+                       Cursor="Hand"/>
 
-            <!-- Hover: 返回按钮 (右, 仅解锁时可见) -->
-            <Button x:Name="ExpandButton" Content="⬜" FontSize="12"
-                    Width="26" Height="26" Padding="0"
-                    HorizontalAlignment="Right" VerticalAlignment="Center"
+            <!-- 编辑模式 -->
+            <StackPanel x:Name="EditPanel" Grid.Column="2" Orientation="Horizontal"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Visibility="Collapsed">
+                <Button Content="▲" FontSize="12"
+                        Background="Transparent" Foreground="#A0A0B8"
+                        BorderThickness="0" Cursor="Hand" Padding="4,2"
+                        VerticalAlignment="Center" Click="OnEditUp"/>
+                <TextBlock x:Name="EditMinutesText" FontSize="20" FontWeight="Bold"
+                           Foreground="#FFD93D"
+                           FontFamily="Consolas, Cascadia Mono, monospace"
+                           VerticalAlignment="Center" Margin="2,0"
+                           MouseWheel="OnEditWheel"/>
+                <Button Content="▼" FontSize="12"
+                        Background="Transparent" Foreground="#A0A0B8"
+                        BorderThickness="0" Cursor="Hand" Padding="4,2"
+                        VerticalAlignment="Center" Click="OnEditDown"/>
+                <Button Content="取消" FontSize="10"
+                        Background="Transparent" Foreground="#A0A0B8"
+                        BorderThickness="0" Cursor="Hand" Padding="4,2"
+                        VerticalAlignment="Center" Click="OnEditCancel"/>
+            </StackPanel>
+
+            <!-- 重置 (常驻, 倒计时右边) -->
+            <Button x:Name="ResetButton" Grid.Column="3" Content="🔄" FontSize="13"
+                    Width="24" Height="24" Padding="0"
+                    VerticalAlignment="Center" Margin="4,0,0,0"
+                    Background="Transparent" Foreground="#A0A0B8"
+                    BorderThickness="0" Cursor="Hand"
+                    Click="OnResetClick" ToolTip="重置"/>
+
+            <!-- 返回按钮 (灵动岛展开时可见) -->
+            <Button x:Name="ExpandButton" Grid.Column="4" Content="⬜" FontSize="12"
+                    Width="0" Height="26" Padding="0"
+                    VerticalAlignment="Center"
                     Background="Transparent" Foreground="#A0A0B8"
                     BorderThickness="0" Cursor="Hand"
                     Opacity="0" IsHitTestVisible="False"
-                    Click="OnExpandClick" ToolTip="返回主窗口"/>
+                    Click="OnExpandClick" ToolTip="返回主窗口">
+                <Button.Clip>
+                    <RectangleGeometry Rect="0,0,0,26"/>
+                </Button.Clip>
+            </Button>
         </Grid>
     </Border>
 </Window>
