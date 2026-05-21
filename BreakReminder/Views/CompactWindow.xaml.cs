@@ -22,8 +22,8 @@ public partial class CompactWindow : Window
     private int _editMinutes;
     private bool _isExpanded;
     private bool _isPaused;
-    private bool _isAnimating;      // 动画进行中禁止响应 hover
-    private int _outsideTickCount;   // 鼠标离开窗口的累计 tick 数
+    private bool _isAnimating;
+    private int _outsideTickCount;
 
     // --- Win32 鼠标穿透 ---
     private const int GWL_EXSTYLE = -20;
@@ -67,6 +67,11 @@ public partial class CompactWindow : Window
         _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
         _refreshTimer.Tick += (_, _) => RefreshCountdown();
         _refreshTimer.Start();
+
+        // 统一的鼠标位置检测定时器（替代不可靠的 MouseEnter/Leave）
+        _hoverCheckTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
+        _hoverCheckTimer.Tick += OnHoverCheckTick;
+        _hoverCheckTimer.Start();
 
         BuildContextMenu();
         RefreshCountdown();
@@ -163,15 +168,12 @@ public partial class CompactWindow : Window
 
         CaptureCountdownAnchor();
         _isAnimating = true;
+        _outsideTickCount = 0;
         SizeChanged += OnAnimatingSizeChanged;
 
         // 锁定按钮始终展开
         var widthAnim = new DoubleAnimation(0, BTN_WIDTH, AnimDuration) { EasingFunction = Ease };
-        widthAnim.Completed += (_, _) =>
-        {
-            SizeChanged -= OnAnimatingSizeChanged;
-            _isAnimating = false;
-        };
+        widthAnim.Completed += OnExpandAnimationCompleted;
         AnimateWidth(LockButton, 0, BTN_WIDTH, widthAnim);
         AnimateOpacity(LockButton, 0, 1);
         LockButton.IsHitTestVisible = true;
@@ -200,14 +202,11 @@ public partial class CompactWindow : Window
 
         CaptureCountdownAnchor();
         _isAnimating = true;
+        _outsideTickCount = 0;
         SizeChanged += OnAnimatingSizeChanged;
 
         var widthAnim = new DoubleAnimation(BTN_WIDTH, 0, AnimDuration) { EasingFunction = Ease };
-        widthAnim.Completed += (_, _) =>
-        {
-            SizeChanged -= OnAnimatingSizeChanged;
-            _isAnimating = false;
-        };
+        widthAnim.Completed += OnCollapseAnimationCompleted;
         AnimateWidth(LockButton, BTN_WIDTH, 0, widthAnim);
         AnimateOpacity(LockButton, 1, 0);
         LockButton.IsHitTestVisible = false;
@@ -269,18 +268,39 @@ public partial class CompactWindow : Window
         el.BeginAnimation(OpacityProperty, anim);
     }
 
-    // --- Hover ---
+    // --- 动画完成回调 ---
 
-    private void OnMouseEnterRoot(object sender, MouseEventArgs e)
+    private void OnExpandAnimationCompleted(object? sender, EventArgs e)
     {
-        if (!_isLocked && !_isAnimating)
-            ExpandIsland();
+        SizeChanged -= OnAnimatingSizeChanged;
+        // 动画结束后延迟一帧再解锁 hover 检测，避免立即触发 collapse
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
+        {
+            _isAnimating = false;
+            _outsideTickCount = 0;
+        });
     }
 
-    private void OnMouseLeaveRoot(object sender, MouseEventArgs e)
+    private void OnCollapseAnimationCompleted(object? sender, EventArgs e)
     {
-        if (!_isLocked && !_isEditing && !_isAnimating)
-            CollapseIsland();
+        SizeChanged -= OnAnimatingSizeChanged;
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
+        {
+            _isAnimating = false;
+            _outsideTickCount = 0;
+        });
+    }
+
+    // --- 统一 Hover 检测 ---
+
+    private bool IsCursorOverWindow()
+    {
+        if (_hwnd == IntPtr.Zero) return false;
+        GetCursorPos(out POINT pt);
+        var winPos = PointToScreen(new Point(0, 0));
+        double pad = 14;
+        return pt.X >= winPos.X - pad && pt.X <= winPos.X + ActualWidth + pad &&
+               pt.Y >= winPos.Y - pad && pt.Y <= winPos.Y + ActualHeight + pad;
     }
 
     // --- 拖拽 / 点击编辑 ---
@@ -411,33 +431,45 @@ public partial class CompactWindow : Window
 
     private void OnHoverCheckTick(object? sender, EventArgs e)
     {
-        if (!_isLocked || _hwnd == IntPtr.Zero || _isAnimating) return;
+        if (_hwnd == IntPtr.Zero || _isAnimating) return;
 
-        GetCursorPos(out POINT pt);
+        bool over = IsCursorOverWindow();
 
-        // 检测鼠标是否在窗口区域（含较大外边距避免边缘抢动）
-        var winPos = PointToScreen(new Point(0, 0));
-        double pad = 12;
-        bool overWindow = pt.X >= winPos.X - pad && pt.X <= winPos.X + ActualWidth + pad &&
-                          pt.Y >= winPos.Y - pad && pt.Y <= winPos.Y + ActualHeight + pad;
-
-        if (overWindow)
+        if (over)
         {
             _outsideTickCount = 0;
-            if (_isClickThrough)
+
+            if (_isLocked)
             {
-                SetClickThrough(false);
-                ExpandIsland(lockOnly: true);
+                // 锁定模式：取消穿透，展开仅锁定按钮
+                if (_isClickThrough)
+                {
+                    SetClickThrough(false);
+                    ExpandIsland(lockOnly: true);
+                }
+            }
+            else
+            {
+                // 非锁定模式：展开全部按钮
+                if (!_isExpanded && !_isEditing)
+                    ExpandIsland();
             }
         }
         else
         {
             _outsideTickCount++;
-            // 连续 3 次 tick (级240ms) 都在外面才收起，避免动画期间抢动
-            if (_outsideTickCount >= 3 && !_isClickThrough && _isLocked)
+            // 连续 4 次 tick (~320ms) 都在外面才收起
+            if (_outsideTickCount >= 4 && _isExpanded && !_isEditing)
             {
-                CollapseIsland();
-                SetClickThrough(true);
+                if (_isLocked)
+                {
+                    CollapseIsland();
+                    SetClickThrough(true);
+                }
+                else
+                {
+                    CollapseIsland();
+                }
                 _outsideTickCount = 0;
             }
         }
@@ -460,21 +492,28 @@ public partial class CompactWindow : Window
         if (_isLocked)
         {
             if (_isEditing) ExitEditMode(apply: false);
-            CollapseIsland();
-            SetClickThrough(true);
-            _hoverCheckTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
-            _hoverCheckTimer.Tick += OnHoverCheckTick;
-            _hoverCheckTimer.Start();
+            // 收起暂停/重置/返回，只保留锁按钮
+            AnimateWidth(PauseButton, PauseButton.ActualWidth, 0);
+            AnimateOpacity(PauseButton, PauseButton.Opacity, 0);
+            PauseButton.IsHitTestVisible = false;
+
+            AnimateWidth(ResetButton, ResetButton.ActualWidth, 0);
+            AnimateOpacity(ResetButton, ResetButton.Opacity, 0);
+            ResetButton.IsHitTestVisible = false;
+
+            AnimateWidth(ExpandButton, ExpandButton.ActualWidth, 0);
+            AnimateOpacity(ExpandButton, ExpandButton.Opacity, 0);
+            ExpandButton.IsHitTestVisible = false;
+
+            // 鼠标离开后再穿透（由 hover timer 管理）
         }
         else
         {
-            _hoverCheckTimer?.Stop();
-            _hoverCheckTimer = null;
             SetClickThrough(false);
-            // 解锁后保持展开状态，展示全部按钮
+            _outsideTickCount = 0;
+            // 解锁后展示全部按钮
             if (_isExpanded)
             {
-                // 已经展开了（锁按钮可见），补充展开暂停/重置/返回按钮
                 AnimateWidth(PauseButton, 0, 24);
                 AnimateOpacity(PauseButton, 0, 1);
                 PauseButton.IsHitTestVisible = true;
