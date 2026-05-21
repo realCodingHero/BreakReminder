@@ -119,6 +119,10 @@ public partial class App : Application
             _autoStartService.SetAutoStart(_settings.AutoStart);
 
             UpdateTrayTooltip();
+
+            // 恢复上次窗口模式和位置
+            RestoreWindowState();
+
             Log("=== OnStartup COMPLETE ===");
         }
         catch (Exception ex)
@@ -133,6 +137,7 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         Log("OnExit called.");
+        SaveWindowState();
         _activityTracker?.Stop();
         _inputMonitor?.Dispose();
         _mediaPlayback?.Dispose();
@@ -309,7 +314,6 @@ public partial class App : Application
 
     private void EnterCompactMode()
     {
-        // 记住主窗口位置
         double left = _mainWindow?.Left ?? 100;
         double top = _mainWindow?.Top ?? 100;
 
@@ -322,19 +326,65 @@ public partial class App : Application
         _compactWindow.ExpandRequested += ExitCompactMode;
         _compactWindow.Closed += (_, _) => _compactWindow = null;
         _compactWindow.Show();
+
+        // 保存窗口状态
+        _settings.IsCompactMode = true;
+        _settings.WindowLeft = left;
+        _settings.WindowTop = top;
+        _settingsService?.Save(_settings);
     }
 
     private void ExitCompactMode()
     {
-        // 记住悬浮窗位置
         double left = _compactWindow?.Left ?? 100;
         double top = _compactWindow?.Top ?? 100;
 
         _compactWindow?.Close();
         _compactWindow = null;
 
-        // 在悬浮窗位置打开主窗口
         OpenMainWindow(left, top);
+
+        // 保存窗口状态
+        _settings.IsCompactMode = false;
+        _settings.WindowLeft = left;
+        _settings.WindowTop = top;
+        _settingsService?.Save(_settings);
+    }
+
+    private void RestoreWindowState()
+    {
+        double? left = double.IsNaN(_settings.WindowLeft) ? null : _settings.WindowLeft;
+        double? top = double.IsNaN(_settings.WindowTop) ? null : _settings.WindowTop;
+
+        if (_settings.IsCompactMode)
+        {
+            if (_activityTracker == null) return;
+            _compactWindow = new CompactWindow(_activityTracker, _settings, left, top);
+            _compactWindow.ExpandRequested += ExitCompactMode;
+            _compactWindow.Closed += (_, _) => _compactWindow = null;
+            _compactWindow.Show();
+        }
+        else
+        {
+            OpenMainWindow(left, top);
+        }
+    }
+
+    private void SaveWindowState()
+    {
+        if (_compactWindow != null)
+        {
+            _settings.IsCompactMode = true;
+            _settings.WindowLeft = _compactWindow.Left;
+            _settings.WindowTop = _compactWindow.Top;
+        }
+        else if (_mainWindow != null)
+        {
+            _settings.IsCompactMode = false;
+            _settings.WindowLeft = _mainWindow.Left;
+            _settings.WindowTop = _mainWindow.Top;
+        }
+        _settingsService?.Save(_settings);
     }
 
     private void OnSettingsSaved(AppSettings newSettings)

@@ -1,7 +1,9 @@
 using System.Globalization;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 using BreakReminder.ViewModels;
 using BreakReminder.Models;
@@ -36,6 +38,7 @@ public partial class MainWindow : Window
     private readonly MainViewModel _viewModel;
     private readonly ActivityTracker _tracker;
     private AppSettings _currentSettings;
+    private string _selectedLanguage;
 
     public event Action<AppSettings>? SettingsSaved;
     public event Action? ResetConfirmed;
@@ -46,6 +49,7 @@ public partial class MainWindow : Window
     {
         _currentSettings = settings;
         _tracker = tracker;
+        _selectedLanguage = settings.Language;
 
         InitializeComponent();
 
@@ -55,6 +59,82 @@ public partial class MainWindow : Window
 
         _viewModel.ResetRequested += OnResetRequested;
         _viewModel.PauseResumeRequested += () => PauseResumeRequested?.Invoke();
+
+        BuildLanguageSelector();
+    }
+
+    // --- 语言选择器 ---
+
+    private void BuildLanguageSelector()
+    {
+        LangGrid.Children.Clear();
+        for (int i = 0; i < LocalizationService.SupportedLanguages.Length; i++)
+        {
+            var (code, flagLabel, name) = LocalizationService.SupportedLanguages[i];
+            var color = LocalizationService.FlagColors[i];
+            bool isSelected = code == _selectedLanguage;
+
+            var btn = new Button
+            {
+                Tag = code,
+                Cursor = System.Windows.Input.Cursors.Hand,
+                Margin = new Thickness(2),
+                Padding = new Thickness(4, 6, 4, 6),
+                BorderThickness = new Thickness(2),
+                BorderBrush = isSelected
+                    ? (Brush)FindResource("AccentBrush")
+                    : new SolidColorBrush(Color.FromArgb(0x44, 0xFF, 0xFF, 0xFF)),
+                Background = isSelected
+                    ? new SolidColorBrush(Color.FromArgb(0x33, 0xFF, 0x6B, 0x6B))
+                    : new SolidColorBrush(Color.FromArgb(0x22, 0xFF, 0xFF, 0xFF)),
+            };
+
+            var sp = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
+
+            // 国旗色块 + 缩写
+            var flagBorder = new Border
+            {
+                Background = (Brush)new BrushConverter().ConvertFromString(color)!,
+                CornerRadius = new CornerRadius(3),
+                Width = 28, Height = 18,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 0, 0, 3),
+                Child = new TextBlock
+                {
+                    Text = flagLabel,
+                    FontSize = 9, FontWeight = FontWeights.Bold,
+                    Foreground = Brushes.White,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                }
+            };
+            sp.Children.Add(flagBorder);
+
+            // 语言名称
+            sp.Children.Add(new TextBlock
+            {
+                Text = name,
+                FontSize = 10,
+                Foreground = isSelected
+                    ? (Brush)FindResource("AccentBrush")
+                    : (Brush)FindResource("FgSecondary"),
+                HorizontalAlignment = HorizontalAlignment.Center,
+            });
+
+            btn.Content = sp;
+            btn.Click += OnLanguageSelected;
+            LangGrid.Children.Add(btn);
+        }
+    }
+
+    private void OnLanguageSelected(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string code)
+        {
+            _selectedLanguage = code;
+            LocalizationService.SwitchLanguage(code);
+            BuildLanguageSelector(); // 刷新高亮状态
+        }
     }
 
     // --- 重置确认 ---
@@ -69,6 +149,99 @@ public partial class MainWindow : Window
 
         if (result == MessageBoxResult.Yes)
             ResetConfirmed?.Invoke();
+    }
+
+    // --- 倒计时编辑 ---
+
+    private bool _isEditing;
+    private int _editMinutes;
+
+    private void OnCountdownClick(object sender, MouseButtonEventArgs e)
+    {
+        if (_isEditing) return;
+
+        // 读取当前剩余分钟（向上取整到 5 的倍数）
+        var worked = TimeSpan.FromSeconds(_tracker.WorkedSeconds);
+        var target = TimeSpan.FromMinutes(_currentSettings.WorkDurationMinutes);
+        var remaining = target - worked;
+        if (remaining < TimeSpan.Zero) remaining = TimeSpan.Zero;
+
+        _editMinutes = ((int)Math.Ceiling(remaining.TotalMinutes / 5.0)) * 5;
+        _editMinutes = Math.Max(0, Math.Min(_editMinutes, _currentSettings.WorkDurationMinutes));
+        UpdateEditDisplay();
+
+        _isEditing = true;
+        CountdownDisplay.Visibility = Visibility.Collapsed;
+        EditPanel.Visibility = Visibility.Visible;
+        e.Handled = true;
+    }
+
+    private void OnEditUp(object sender, RoutedEventArgs e)
+    {
+        _editMinutes = Math.Min(_editMinutes + 5, _currentSettings.WorkDurationMinutes);
+        UpdateEditDisplay();
+    }
+
+    private void OnEditDown(object sender, RoutedEventArgs e)
+    {
+        _editMinutes = Math.Max(_editMinutes - 5, 0);
+        UpdateEditDisplay();
+    }
+
+    private void OnEditMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (e.Delta > 0)
+            _editMinutes = Math.Min(_editMinutes + 5, _currentSettings.WorkDurationMinutes);
+        else
+            _editMinutes = Math.Max(_editMinutes - 5, 0);
+        UpdateEditDisplay();
+        e.Handled = true;
+    }
+
+    private void OnEditCancel(object sender, RoutedEventArgs e) => ExitEditMode(apply: false);
+
+    private void ExitEditMode(bool apply)
+    {
+        if (!_isEditing) return;
+        _isEditing = false;
+        EditPanel.Visibility = Visibility.Collapsed;
+        CountdownDisplay.Visibility = Visibility.Visible;
+
+        if (apply)
+            _tracker.SetRemainingMinutes(_editMinutes);
+    }
+
+    private void UpdateEditDisplay()
+    {
+        EditMinutesText.Text = _editMinutes.ToString();
+    }
+
+    // ESC 取消编辑，点击编辑区域外确认
+    protected override void OnPreviewKeyDown(KeyEventArgs e)
+    {
+        if (_isEditing && e.Key == Key.Escape)
+        {
+            ExitEditMode(apply: false);
+            e.Handled = true;
+            return;
+        }
+        base.OnPreviewKeyDown(e);
+    }
+
+    protected override void OnPreviewMouseLeftButtonDown(MouseButtonEventArgs e)
+    {
+        if (_isEditing)
+        {
+            // 检查点击是否在编辑面板外
+            var hitResult = VisualTreeHelper.HitTest(EditPanel, e.GetPosition(EditPanel));
+            if (hitResult == null)
+            {
+                ExitEditMode(apply: true);
+                e.Handled = true;
+                return;
+            }
+        }
+        base.OnPreviewMouseLeftButtonDown(e);
     }
 
     // --- 透明模式 ---
@@ -146,6 +319,9 @@ public partial class MainWindow : Window
         ChkMedia.IsChecked     = _currentSettings.MonitorMediaPlayback;
 
         ChkAutoStart.IsChecked = _currentSettings.AutoStart;
+
+        _selectedLanguage = _currentSettings.Language;
+        BuildLanguageSelector();
     }
 
     private void SaveSettingsFromDrawer()
@@ -166,6 +342,8 @@ public partial class MainWindow : Window
         s.MonitorMediaPlayback = ChkMedia.IsChecked == true;
 
         s.AutoStart = ChkAutoStart.IsChecked == true;
+
+        s.Language = _selectedLanguage;
 
         _currentSettings = s;
         SettingsSaved?.Invoke(s);

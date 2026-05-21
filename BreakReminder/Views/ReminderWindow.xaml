@@ -149,8 +149,7 @@
                 <TextBlock Grid.Row="0" Text="🍅" FontSize="48"
                            HorizontalAlignment="Center" Margin="0,0,0,8"/>
 
-                <!-- 标题 -->
-                <TextBlock Grid.Row="1" Text="该休息了！"
+                <TextBlock Grid.Row="1" Text="{DynamicResource ReminderTitle}"
                            Foreground="{StaticResource FgPrimary}"
                            FontSize="26" FontWeight="Bold"
                            HorizontalAlignment="Center" Margin="0,0,0,16"/>
@@ -174,9 +173,9 @@
                 <!-- 操作按钮 -->
                 <StackPanel Grid.Row="5" Orientation="Horizontal"
                             HorizontalAlignment="Center" Margin="0,12,0,0">
-                    <Button Content="知道了"   Style="{StaticResource PrimaryButton}"
+                    <Button Content="{DynamicResource Dismiss}"   Style="{StaticResource PrimaryButton}"
                             Command="{Binding DismissCommand}" Margin="0,0,16,0"/>
-                    <Button Content="推迟 5 分钟" Style="{StaticResource SecondaryButton}"
+                    <Button Content="{Binding SnoozeText}" Style="{StaticResource SecondaryButton}"
                             Command="{Binding SnoozeCommand}"/>
                 </StackPanel>
             </Grid>

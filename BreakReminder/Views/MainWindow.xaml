@@ -48,6 +48,44 @@
             </Setter>
         </Style>
 
+        <!-- 圆形按钮样式 -->
+        <Style x:Key="CircleButton" TargetType="Button">
+            <Setter Property="Foreground"  Value="{StaticResource FgPrimary}"/>
+            <Setter Property="FontSize"    Value="32"/>
+            <Setter Property="Cursor"      Value="Hand"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width"       Value="96"/>
+            <Setter Property="Height"      Value="96"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="48"
+                                Width="96" Height="96">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.85"/>
+                                <Setter TargetName="Bd" Property="RenderTransform">
+                                    <Setter.Value><ScaleTransform ScaleX="1.06" ScaleY="1.06"/></Setter.Value>
+                                </Setter>
+                                <Setter TargetName="Bd" Property="RenderTransformOrigin" Value="0.5,0.5"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.7"/>
+                                <Setter TargetName="Bd" Property="RenderTransform">
+                                    <Setter.Value><ScaleTransform ScaleX="0.95" ScaleY="0.95"/></Setter.Value>
+                                </Setter>
+                                <Setter TargetName="Bd" Property="RenderTransformOrigin" Value="0.5,0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- CheckBox 样式 -->
         <Style x:Key="DrawerCheckBox" TargetType="CheckBox">
             <Setter Property="Foreground" Value="{StaticResource FgPrimary}"/>
@@ -101,37 +139,40 @@
 
         <!-- ══ 层 1: 主界面 ══ -->
         <Border Padding="28,24">
-            <StackPanel>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+            <StackPanel Grid.Row="0">
                 <!-- 自定义标题栏 (可拖拽) -->
                 <Grid Margin="0,0,0,14">
-                    <!-- 透明模式 (左) -->
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                        <Button Background="Transparent" Foreground="{StaticResource FgSecondary}"
-                                FontSize="16" Cursor="Hand" BorderThickness="0"
-                                Padding="4,2" Click="OnCompactClick"
-                                Content="📌" ToolTip="透明悬浮模式"/>
-                    </StackPanel>
                     <!-- 标题 (居中) -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                        <TextBlock Text="🍅" FontSize="20" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <TextBlock Text="番茄闹钟" Foreground="{StaticResource FgPrimary}"
+                        <TextBlock Text="🍅" FontSize="20" Foreground="#D8D8E8"
+                                   VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="{DynamicResource AppTitle}" Foreground="{StaticResource FgPrimary}"
                                    FontSize="17" FontWeight="Bold" VerticalAlignment="Center"/>
                     </StackPanel>
-                    <!-- 设置 + 关闭 (右) -->
+                    <!-- 模式切换 + 设置 + 关闭 (右) -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Background="Transparent" Foreground="{StaticResource FgSecondary}"
+                                FontSize="18" Cursor="Hand" BorderThickness="0"
+                                Padding="6,2" Click="OnCompactClick"
+                                Content="─" ToolTip="{DynamicResource CompactTip}" FontWeight="Bold"/>
                         <Button Background="Transparent" Foreground="{StaticResource FgSecondary}"
                                 FontSize="20" Cursor="Hand" BorderThickness="0"
                                 Padding="4,2" Click="OnSettingsClick"
-                                Content="☰" ToolTip="设置"/>
+                                Content="☰" ToolTip="{DynamicResource SettingsTip}"/>
                         <Button Background="Transparent" Foreground="{StaticResource FgSecondary}"
                                 FontSize="14" Cursor="Hand" BorderThickness="0"
                                 Padding="6,2" Click="OnCloseClick"
-                                Content="✕" ToolTip="隐藏到托盘"/>
+                                Content="✕" ToolTip="{DynamicResource HideToTray}"/>
                     </StackPanel>
                 </Grid>
 
                 <!-- 状态 -->
-                <TextBlock Text="{Binding StatusEmoji}" FontSize="36"
+                <TextBlock Text="{Binding StatusEmoji}" FontSize="36" Foreground="#D8D8E8"
                            HorizontalAlignment="Center" Margin="0,0,0,4"/>
                 <TextBlock Text="{Binding StatusText}" FontSize="14"
                            Foreground="{StaticResource FgSecondary}"
@@ -140,13 +181,51 @@
                 <!-- 倒计时卡片 -->
                 <Border Background="{StaticResource BgCard}" CornerRadius="12" Padding="24,20" Margin="0,0,0,12">
                     <StackPanel>
-                        <TextBlock Text="距离休息" FontSize="12"
+                        <TextBlock Text="{DynamicResource CountdownLabel}" FontSize="12"
                                    Foreground="{StaticResource FgSecondary}"
                                    HorizontalAlignment="Center" Margin="0,0,0,4"/>
-                        <TextBlock Text="{Binding RemainingTimeText}" FontSize="48" FontWeight="Bold"
-                                   Foreground="{StaticResource AccentBrush}"
-                                   HorizontalAlignment="Center" Margin="0,0,0,12"
-                                   FontFamily="Consolas, Cascadia Mono, monospace"/>
+
+                        <!-- 倒计时：普通显示 / 编辑模式 -->
+                        <Grid HorizontalAlignment="Center" Margin="0,0,0,12">
+                            <!-- 普通模式：点击进入编辑 -->
+                            <TextBlock x:Name="CountdownDisplay"
+                                       Text="{Binding RemainingTimeText}" FontSize="48" FontWeight="Bold"
+                                       Foreground="{StaticResource AccentBrush}"
+                                       FontFamily="Consolas, Cascadia Mono, monospace"
+                                       Cursor="Hand"
+                                       MouseLeftButtonDown="OnCountdownClick"/>
+
+                            <!-- 编辑模式 -->
+                            <StackPanel x:Name="EditPanel" Orientation="Horizontal"
+                                        VerticalAlignment="Center" HorizontalAlignment="Center"
+                                        Visibility="Collapsed">
+                                <!-- 上箭头 -->
+                                <Button Content="▲" FontSize="18"
+                                        Background="Transparent" Foreground="{StaticResource FgSecondary}"
+                                        BorderThickness="0" Cursor="Hand" Padding="8,4"
+                                        VerticalAlignment="Center" Click="OnEditUp"/>
+                                <!-- 分钟数 (可滚轮) -->
+                                <TextBlock x:Name="EditMinutesText" FontSize="48" FontWeight="Bold"
+                                           Foreground="#FFD93D"
+                                           FontFamily="Consolas, Cascadia Mono, monospace"
+                                           VerticalAlignment="Center" Margin="4,0"
+                                           MouseWheel="OnEditMouseWheel"/>
+                                <TextBlock Text=" min" FontSize="16"
+                                           Foreground="{StaticResource FgSecondary}"
+                                           VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                <!-- 下箭头 -->
+                                <Button Content="▼" FontSize="18"
+                                        Background="Transparent" Foreground="{StaticResource FgSecondary}"
+                                        BorderThickness="0" Cursor="Hand" Padding="8,4"
+                                        VerticalAlignment="Center" Click="OnEditDown"/>
+                                <!-- 取消按钮 -->
+                                <Button Content="{DynamicResource Cancel}" FontSize="13"
+                                        Background="Transparent" Foreground="{StaticResource FgSecondary}"
+                                        BorderThickness="0" Cursor="Hand" Padding="8,4"
+                                        VerticalAlignment="Center" Click="OnEditCancel"
+                                        ToolTip="ESC"/>
+                            </StackPanel>
+                        </Grid>
 
                         <!-- 进度条 -->
                         <Grid Height="6" Margin="0,0,0,12">
@@ -164,31 +243,33 @@
                         </Grid>
 
                         <TextBlock Foreground="{StaticResource FgSecondary}" FontSize="12">
-                            <Run Text="已工作  "/>
+                            <Run Text="{DynamicResource WorkedLabel}"/>
                             <Run Text="{Binding WorkedTimeText, Mode=OneWay}"
                                  Foreground="{StaticResource FgPrimary}" FontWeight="SemiBold"/>
                         </TextBlock>
                     </StackPanel>
                 </Border>
 
-                <!-- 操作按钮 -->
-                <Grid Margin="0,4,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="8"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <Button Grid.Column="0" Content="{Binding PauseButtonText}"
-                            Background="{StaticResource BgCard}"
-                            Style="{StaticResource ActionButton}"
-                            Command="{Binding PauseResumeCommand}"/>
-                    <Button Grid.Column="2" Content="🔄  重置"
-                            Background="#44FF6B6B"
-                            Style="{StaticResource ActionButton}"
-                            Command="{Binding ResetCommand}"/>
-                </Grid>
             </StackPanel>
+
+                <!-- 操作按钮 (固定底部, 左右排列) -->
+                <StackPanel Grid.Row="1" Orientation="Horizontal"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <!-- 暂停/继续 -->
+                    <Button Content="{Binding PauseButtonIcon}"
+                            Background="{StaticResource BgCard}"
+                            Style="{StaticResource CircleButton}"
+                            Command="{Binding PauseResumeCommand}"
+                            ToolTip="{Binding PauseButtonText}"
+                            Margin="0,0,24,0"/>
+                    <!-- 重置 -->
+                    <Button Content="🔄"
+                            Background="#44FF6B6B"
+                            Style="{StaticResource CircleButton}"
+                            Command="{Binding ResetCommand}"
+                            ToolTip="重置"/>
+                </StackPanel>
+            </Grid>
         </Border>
 
         <!-- ══ 层 2: 半透明遮罩 ══ -->
@@ -215,11 +296,11 @@
                         BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,0,1">
                     <Grid>
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="⚙" FontSize="16" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <TextBlock Text="设置" Foreground="{StaticResource FgPrimary}"
-                                       FontSize="17" FontWeight="Bold" VerticalAlignment="Center"/>
-                        </StackPanel>
-                        <Button Content="✕" HorizontalAlignment="Right"
+                        <TextBlock Text="⚙" FontSize="16" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="{DynamicResource SettingsTitle}" Foreground="{StaticResource FgPrimary}"
+                                   FontSize="17" FontWeight="Bold" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <Button Content="✕" HorizontalAlignment="Right"
                                 Background="Transparent" Foreground="{StaticResource FgSecondary}"
                                 FontSize="16" Cursor="Hand" BorderThickness="0"
                                 Padding="4,0" Click="OnDrawerClose"/>
@@ -231,7 +312,7 @@
                     <StackPanel x:Name="DrawerContent">
 
                         <!-- 计时设置 -->
-                        <TextBlock Text="⏱ 计时设置" Foreground="{StaticResource AccentBrush}"
+                        <TextBlock Text="{DynamicResource TimerSettings}" Foreground="{StaticResource AccentBrush}"
                                    FontSize="13" FontWeight="SemiBold" Margin="0,8,0,6"/>
 
                         <!-- 工作时长 -->
@@ -241,7 +322,7 @@
                                 <ColumnDefinition Width="36"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock Text="工作时长（分钟）" Foreground="{StaticResource FgPrimary}" FontSize="12"/>
+                                <TextBlock Text="{DynamicResource WorkDuration}" Foreground="{StaticResource FgPrimary}" FontSize="12"/>
                                 <Slider x:Name="SliderWork" Style="{StaticResource DrawerSlider}" Maximum="120"/>
                             </StackPanel>
                             <TextBlock Grid.Column="1" Text="{Binding Value, ElementName=SliderWork, StringFormat={}{0:0}}"
@@ -256,7 +337,7 @@
                                 <ColumnDefinition Width="36"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock Text="休息时长（分钟）" Foreground="{StaticResource FgPrimary}" FontSize="12"/>
+                                <TextBlock Text="{DynamicResource BreakDuration}" Foreground="{StaticResource FgPrimary}" FontSize="12"/>
                                 <Slider x:Name="SliderBreak" Style="{StaticResource DrawerSlider}" Maximum="30"/>
                             </StackPanel>
                             <TextBlock Grid.Column="1" Text="{Binding Value, ElementName=SliderBreak, StringFormat={}{0:0}}"
@@ -271,7 +352,7 @@
                                 <ColumnDefinition Width="36"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock Text="空闲阈值（分钟）" Foreground="{StaticResource FgPrimary}" FontSize="12"/>
+                                <TextBlock Text="{DynamicResource IdleThreshold}" Foreground="{StaticResource FgPrimary}" FontSize="12"/>
                                 <Slider x:Name="SliderIdle" Style="{StaticResource DrawerSlider}" Maximum="30"/>
                             </StackPanel>
                             <TextBlock Grid.Column="1" Text="{Binding Value, ElementName=SliderIdle, StringFormat={}{0:0}}"
@@ -286,7 +367,7 @@
                                 <ColumnDefinition Width="36"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock Text="推迟时长（分钟）" Foreground="{StaticResource FgPrimary}" FontSize="12"/>
+                                <TextBlock Text="{DynamicResource SnoozeDuration}" Foreground="{StaticResource FgPrimary}" FontSize="12"/>
                                 <Slider x:Name="SliderSnooze" Style="{StaticResource DrawerSlider}" Maximum="30"/>
                             </StackPanel>
                             <TextBlock Grid.Column="1" Text="{Binding Value, ElementName=SliderSnooze, StringFormat={}{0:0}}"
@@ -306,20 +387,20 @@
 
                             <!-- 左: 提醒方式 -->
                             <StackPanel Grid.Column="0">
-                                <TextBlock Text="🔔 提醒" Foreground="{StaticResource AccentBrush}"
+                                <TextBlock Text="{DynamicResource NotifySection}" Foreground="{StaticResource AccentBrush}"
                                            FontSize="12" FontWeight="SemiBold" Margin="0,0,0,3"/>
                                 <CheckBox x:Name="ChkToast"  Style="{StaticResource DrawerCheckBox}" Content="Toast"/>
-                                <CheckBox x:Name="ChkPopup"  Style="{StaticResource DrawerCheckBox}" Content="弹窗"/>
-                                <CheckBox x:Name="ChkSound"  Style="{StaticResource DrawerCheckBox}" Content="声音"/>
+                                <CheckBox x:Name="ChkPopup"  Style="{StaticResource DrawerCheckBox}" Content="{DynamicResource Popup}"/>
+                                <CheckBox x:Name="ChkSound"  Style="{StaticResource DrawerCheckBox}" Content="{DynamicResource Sound}"/>
                             </StackPanel>
 
                             <!-- 右: 监控项目 -->
                             <StackPanel Grid.Column="2">
-                                <TextBlock Text="👁 监控" Foreground="{StaticResource AccentBrush}"
+                                <TextBlock Text="{DynamicResource MonitorSection}" Foreground="{StaticResource AccentBrush}"
                                            FontSize="12" FontWeight="SemiBold" Margin="0,0,0,3"/>
-                                <CheckBox x:Name="ChkKeyboard" Style="{StaticResource DrawerCheckBox}" Content="键盘"/>
-                                <CheckBox x:Name="ChkMouse"    Style="{StaticResource DrawerCheckBox}" Content="鼠标"/>
-                                <CheckBox x:Name="ChkMedia"    Style="{StaticResource DrawerCheckBox}" Content="媒体"/>
+                                <CheckBox x:Name="ChkKeyboard" Style="{StaticResource DrawerCheckBox}" Content="{DynamicResource Keyboard}"/>
+                                <CheckBox x:Name="ChkMouse"    Style="{StaticResource DrawerCheckBox}" Content="{DynamicResource Mouse}"/>
+                                <CheckBox x:Name="ChkMedia"    Style="{StaticResource DrawerCheckBox}" Content="{DynamicResource Media}"/>
                             </StackPanel>
                         </Grid>
 
@@ -327,7 +408,14 @@
 
                         <!-- 其他 -->
                         <CheckBox x:Name="ChkAutoStart" Style="{StaticResource DrawerCheckBox}"
-                                  Content="⚙ 开机自动启动" Margin="0,2,0,4"/>
+                                  Content="{DynamicResource AutoStart}" Margin="0,2,0,4"/>
+
+                        <Border Height="1" Background="{StaticResource BorderSubtle}" Margin="0,8"/>
+
+                        <!-- 语言选择 -->
+                        <TextBlock Text="{DynamicResource LanguageSection}" Foreground="{StaticResource AccentBrush}"
+                                   FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                        <UniformGrid x:Name="LangGrid" Rows="1" Margin="0,0,0,4"/>
                     </StackPanel>
                 </ScrollViewer>
 
@@ -340,10 +428,10 @@
                             <ColumnDefinition Width="8"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <Button Grid.Column="0" Content="取消"
+                        <Button Grid.Column="0" Content="{DynamicResource Cancel}"
                                 Background="{StaticResource BgCard}"
                                 Style="{StaticResource ActionButton}" Click="OnDrawerClose"/>
-                        <Button Grid.Column="2" Content="保存"
+                        <Button Grid.Column="2" Content="{DynamicResource Save}"
                                 Background="{StaticResource AccentBrush}"
                                 Style="{StaticResource ActionButton}" Click="OnDrawerSave"/>
                     </Grid>

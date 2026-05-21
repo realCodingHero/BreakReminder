@@ -38,6 +38,20 @@ public class AppSettings
     /// <summary>监控媒体播放（浏览器视频等）</summary>
     public bool MonitorMediaPlayback { get; set; } = true;
 
+    // --- 窗口状态（自动持久化，不在设置界面显示） ---
+
+    /// <summary>是否处于小窗模式</summary>
+    public bool IsCompactMode { get; set; } = false;
+
+    /// <summary>窗口 X 坐标</summary>
+    public double WindowLeft { get; set; } = double.NaN;
+
+    /// <summary>窗口 Y 坐标</summary>
+    public double WindowTop { get; set; } = double.NaN;
+
+    /// <summary>界面语言 (zh-CN, en, ja, zh-TW)</summary>
+    public string Language { get; set; } = "zh-CN";
+
     /// <summary>创建深拷贝</summary>
     public AppSettings Clone()
     {

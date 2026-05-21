@@ -1,6 +1,7 @@
 using System.Windows.Input;
 using System.Windows.Threading;
 using BreakReminder.Helpers;
+using BreakReminder.Services;
 
 namespace BreakReminder.ViewModels;
 
@@ -31,8 +32,9 @@ public class ReminderViewModel : ViewModelBase
     public ReminderViewModel(int workedSeconds, int breakDurationMinutes)
     {
         int workedMinutes = workedSeconds / 60;
-        WorkedTimeText = $"已连续工作 {workedMinutes} 分钟";
-        BreakSuggestionText = $"建议休息 {breakDurationMinutes} 分钟";
+        WorkedTimeText = LocalizationService.Format("WorkedTimeFormat", workedMinutes);
+        BreakSuggestionText = LocalizationService.Format("BreakSuggestionFormat", breakDurationMinutes);
+        SnoozeText = LocalizationService.Format("SnoozeFormat", breakDurationMinutes);
 
         CountdownSeconds = breakDurationMinutes * 60;
         UpdateCountdownText();
@@ -82,6 +84,14 @@ public class ReminderViewModel : ViewModelBase
     {
         get => _countdownSeconds;
         private set => SetProperty(ref _countdownSeconds, value);
+    }
+
+    private string _snoozeText = string.Empty;
+    /// <summary>推迟按钮文字</summary>
+    public string SnoozeText
+    {
+        get => _snoozeText;
+        private set => SetProperty(ref _snoozeText, value);
     }
 
     // ── 命令 ──────────────────────────────────────────────────
