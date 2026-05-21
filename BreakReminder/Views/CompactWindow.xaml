@@ -9,7 +9,6 @@
 
     <Border x:Name="RootBorder" CornerRadius="24" Padding="16,6"
             Background="#CC1E1E2E"
-            MouseEnter="OnMouseEnterRoot" MouseLeave="OnMouseLeaveRoot"
             MouseLeftButtonDown="OnRootMouseDown" MouseMove="OnRootMouseMove"
             MouseLeftButtonUp="OnRootMouseUp">
         <Grid>
