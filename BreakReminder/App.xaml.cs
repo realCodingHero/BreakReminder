@@ -214,7 +214,18 @@ public partial class App : Application
         Log("Tooltip and ContextMenu set.");
 
         // 左键双击打开设置
-        _trayIcon.TrayMouseDoubleClick += (_, _) => OpenMainWindow();
+        _trayIcon.TrayMouseDoubleClick += (_, _) =>
+        {
+            if (_compactWindow != null)
+            {
+                // 灵动岛模式：切换回主界面
+                ExitCompactMode();
+            }
+            else
+            {
+                OpenMainWindow();
+            }
+        };
 
         // 确保可见
         _trayIcon.Visibility = Visibility.Visible;
