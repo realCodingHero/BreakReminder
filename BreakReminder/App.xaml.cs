@@ -337,6 +337,7 @@ public partial class App : Application
             _activityTracker?.Reset();
             UpdateTrayTooltip();
         };
+        _compactWindow.ExitRequested += () => Shutdown();
         _compactWindow.Closed += (_, _) => _compactWindow = null;
         _compactWindow.Show();
 
@@ -380,6 +381,7 @@ public partial class App : Application
                 _activityTracker?.Reset();
                 UpdateTrayTooltip();
             };
+            _compactWindow.ExitRequested += () => Shutdown();
             _compactWindow.Closed += (_, _) => _compactWindow = null;
             _compactWindow.Show();
         }

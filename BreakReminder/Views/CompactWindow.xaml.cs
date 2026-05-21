@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -43,6 +44,7 @@ public partial class CompactWindow : Window
     public event Action? ExpandRequested;
     public event Action? PauseResumeRequested;
     public event Action? ResetRequested;
+    public event Action? ExitRequested;
 
     public CompactWindow(ActivityTracker tracker, AppSettings settings,
                          double? startLeft = null, double? startTop = null)
@@ -64,7 +66,43 @@ public partial class CompactWindow : Window
         _refreshTimer.Tick += (_, _) => RefreshCountdown();
         _refreshTimer.Start();
 
+        BuildContextMenu();
         RefreshCountdown();
+    }
+
+    // --- 右键菜单 ---
+
+    private void BuildContextMenu()
+    {
+        var menu = new ContextMenu();
+
+        var pauseItem = new MenuItem { Header = LocalizationService.Get("TrayPause") };
+        pauseItem.Click += (_, _) => PauseResumeRequested?.Invoke();
+
+        var resetItem = new MenuItem { Header = LocalizationService.Get("TrayReset") };
+        resetItem.Click += (_, _) => ResetRequested?.Invoke();
+
+        var expandItem = new MenuItem { Header = LocalizationService.Get("BackToMain") };
+        expandItem.Click += (_, _) => { if (!_isLocked) ExpandRequested?.Invoke(); };
+
+        var exitItem = new MenuItem { Header = LocalizationService.Get("TrayExit") };
+        exitItem.Click += (_, _) => ExitRequested?.Invoke();
+
+        menu.Items.Add(pauseItem);
+        menu.Items.Add(resetItem);
+        menu.Items.Add(new Separator());
+        menu.Items.Add(expandItem);
+        menu.Items.Add(new Separator());
+        menu.Items.Add(exitItem);
+
+        // 菜单关闭后恢复穿透状态
+        menu.Closed += (_, _) =>
+        {
+            if (_isLocked && !_isExpanded)
+                SetClickThrough(true);
+        };
+
+        RootBorder.ContextMenu = menu;
     }
 
     public void UpdateSettings(AppSettings settings)
@@ -100,8 +138,6 @@ public partial class CompactWindow : Window
     private void OnPauseClick(object sender, RoutedEventArgs e)
     {
         PauseResumeRequested?.Invoke();
-        _isPaused = !_isPaused;
-        RefreshCountdown();
     }
 
     private void OnResetClick(object sender, RoutedEventArgs e)
@@ -361,7 +397,9 @@ public partial class CompactWindow : Window
     {
         _isLocked = !_isLocked;
         LockButton.Content = _isLocked ? "🔒" : "🔓";
-        LockButton.ToolTip = _isLocked ? "解锁位置" : "锁定位置";
+        LockButton.ToolTip = _isLocked
+            ? LocalizationService.Get("UnlockTip")
+            : LocalizationService.Get("LockTip");
 
         RootBorder.Background = new SolidColorBrush(
             _isLocked ? Color.FromArgb(0x99, 0x1E, 0x1E, 0x2E)
