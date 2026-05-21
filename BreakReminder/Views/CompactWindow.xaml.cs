@@ -159,7 +159,7 @@ public partial class CompactWindow : Window
         if (_isExpanded) return;
         _isExpanded = true;
 
-        _anchorCenterX = Left + ActualWidth / 2.0;
+        CaptureCountdownAnchor();
         SizeChanged += OnAnimatingSizeChanged;
 
         // 锁定按钮始终展开
@@ -191,7 +191,7 @@ public partial class CompactWindow : Window
         if (!_isExpanded) return;
         _isExpanded = false;
 
-        _anchorCenterX = Left + ActualWidth / 2.0;
+        CaptureCountdownAnchor();
         SizeChanged += OnAnimatingSizeChanged;
 
         var widthAnim = new DoubleAnimation(BTN_WIDTH, 0, AnimDuration) { EasingFunction = Ease };
@@ -217,9 +217,23 @@ public partial class CompactWindow : Window
 
     private double _anchorCenterX;
 
+    /// <summary>
+    /// 记录倒计时文本在屏幕上的中心 X 坐标作为锚点。
+    /// 展开/收起时以此为不动点调整窗口 Left。
+    /// </summary>
+    private void CaptureCountdownAnchor()
+    {
+        var countdownPos = CountdownText.TranslatePoint(
+            new Point(CountdownText.ActualWidth / 2.0, 0), this);
+        _anchorCenterX = Left + countdownPos.X;
+    }
+
     private void OnAnimatingSizeChanged(object sender, SizeChangedEventArgs e)
     {
-        Left = _anchorCenterX - ActualWidth / 2.0;
+        // 重新计算倒计时在窗口中的位置，保持屏幕锚点不变
+        var countdownPos = CountdownText.TranslatePoint(
+            new Point(CountdownText.ActualWidth / 2.0, 0), this);
+        Left = _anchorCenterX - countdownPos.X;
     }
 
     private void AnimateWidth(FrameworkElement el, double from, double to, DoubleAnimation? customAnim = null)
