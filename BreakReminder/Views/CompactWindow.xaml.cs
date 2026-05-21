@@ -22,6 +22,8 @@ public partial class CompactWindow : Window
     private int _editMinutes;
     private bool _isExpanded;
     private bool _isPaused;
+    private bool _isAnimating;      // 动画进行中禁止响应 hover
+    private int _outsideTickCount;   // 鼠标离开窗口的累计 tick 数
 
     // --- Win32 鼠标穿透 ---
     private const int GWL_EXSTYLE = -20;
@@ -160,11 +162,16 @@ public partial class CompactWindow : Window
         _isExpanded = true;
 
         CaptureCountdownAnchor();
+        _isAnimating = true;
         SizeChanged += OnAnimatingSizeChanged;
 
         // 锁定按钮始终展开
         var widthAnim = new DoubleAnimation(0, BTN_WIDTH, AnimDuration) { EasingFunction = Ease };
-        widthAnim.Completed += (_, _) => SizeChanged -= OnAnimatingSizeChanged;
+        widthAnim.Completed += (_, _) =>
+        {
+            SizeChanged -= OnAnimatingSizeChanged;
+            _isAnimating = false;
+        };
         AnimateWidth(LockButton, 0, BTN_WIDTH, widthAnim);
         AnimateOpacity(LockButton, 0, 1);
         LockButton.IsHitTestVisible = true;
@@ -192,10 +199,15 @@ public partial class CompactWindow : Window
         _isExpanded = false;
 
         CaptureCountdownAnchor();
+        _isAnimating = true;
         SizeChanged += OnAnimatingSizeChanged;
 
         var widthAnim = new DoubleAnimation(BTN_WIDTH, 0, AnimDuration) { EasingFunction = Ease };
-        widthAnim.Completed += (_, _) => SizeChanged -= OnAnimatingSizeChanged;
+        widthAnim.Completed += (_, _) =>
+        {
+            SizeChanged -= OnAnimatingSizeChanged;
+            _isAnimating = false;
+        };
         AnimateWidth(LockButton, BTN_WIDTH, 0, widthAnim);
         AnimateOpacity(LockButton, 1, 0);
         LockButton.IsHitTestVisible = false;
@@ -261,13 +273,13 @@ public partial class CompactWindow : Window
 
     private void OnMouseEnterRoot(object sender, MouseEventArgs e)
     {
-        if (!_isLocked)
+        if (!_isLocked && !_isAnimating)
             ExpandIsland();
     }
 
     private void OnMouseLeaveRoot(object sender, MouseEventArgs e)
     {
-        if (!_isLocked && !_isEditing)
+        if (!_isLocked && !_isEditing && !_isAnimating)
             CollapseIsland();
     }
 
@@ -399,27 +411,35 @@ public partial class CompactWindow : Window
 
     private void OnHoverCheckTick(object? sender, EventArgs e)
     {
-        if (!_isLocked || _hwnd == IntPtr.Zero) return;
+        if (!_isLocked || _hwnd == IntPtr.Zero || _isAnimating) return;
 
         GetCursorPos(out POINT pt);
 
-        // 检测鼠标是否在整个窗口区域（含少量外边距）
+        // 检测鼠标是否在窗口区域（含较大外边距避免边缘抢动）
         var winPos = PointToScreen(new Point(0, 0));
-        double pad = 6;
+        double pad = 12;
         bool overWindow = pt.X >= winPos.X - pad && pt.X <= winPos.X + ActualWidth + pad &&
                           pt.Y >= winPos.Y - pad && pt.Y <= winPos.Y + ActualHeight + pad;
 
-        if (overWindow && _isClickThrough)
+        if (overWindow)
         {
-            // 鼠标进入 → 取消穿透，展开灵动岛（仅锁定按钮）
-            SetClickThrough(false);
-            ExpandIsland(lockOnly: true);
+            _outsideTickCount = 0;
+            if (_isClickThrough)
+            {
+                SetClickThrough(false);
+                ExpandIsland(lockOnly: true);
+            }
         }
-        else if (!overWindow && !_isClickThrough && _isLocked)
+        else
         {
-            // 鼠标离开 → 收起灵动岛，恢复穿透
-            CollapseIsland();
-            SetClickThrough(true);
+            _outsideTickCount++;
+            // 连续 3 次 tick (级240ms) 都在外面才收起，避免动画期间抢动
+            if (_outsideTickCount >= 3 && !_isClickThrough && _isLocked)
+            {
+                CollapseIsland();
+                SetClickThrough(true);
+                _outsideTickCount = 0;
+            }
         }
     }
 
