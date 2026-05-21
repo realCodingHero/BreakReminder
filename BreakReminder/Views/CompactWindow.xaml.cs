@@ -20,6 +20,7 @@ public partial class CompactWindow : Window
     private bool _isEditing;
     private int _editMinutes;
     private bool _isExpanded;
+    private bool _isPaused;
 
     // --- Win32 鼠标穿透 ---
     private const int GWL_EXSTYLE = -20;
@@ -40,6 +41,8 @@ public partial class CompactWindow : Window
     private bool _isClickThrough;
 
     public event Action? ExpandRequested;
+    public event Action? PauseResumeRequested;
+    public event Action? ResetRequested;
 
     public CompactWindow(ActivityTracker tracker, AppSettings settings,
                          double? startLeft = null, double? startTop = null)
@@ -84,6 +87,32 @@ public partial class CompactWindow : Window
         CountdownText.Foreground = remaining.TotalMinutes <= 1 && remaining > TimeSpan.Zero
             ? new SolidColorBrush(Color.FromRgb(0xFF, 0x44, 0x44))
             : new SolidColorBrush(Color.FromRgb(0xFF, 0x6B, 0x6B));
+
+        // 同步暂停按钮图标
+        PauseButton.Content = _isPaused ? "▶" : "⏸";
+        PauseButton.ToolTip = _isPaused
+            ? LocalizationService.Get("Resume")
+            : LocalizationService.Get("Pause");
+    }
+
+    // --- 暂停/重置 ---
+
+    private void OnPauseClick(object sender, RoutedEventArgs e)
+    {
+        PauseResumeRequested?.Invoke();
+        _isPaused = !_isPaused;
+        RefreshCountdown();
+    }
+
+    private void OnResetClick(object sender, RoutedEventArgs e)
+    {
+        ResetRequested?.Invoke();
+    }
+
+    public void UpdatePauseState(bool paused)
+    {
+        _isPaused = paused;
+        RefreshCountdown();
     }
 
     // --- 灵动岛展开/收起 ---

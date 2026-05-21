@@ -75,6 +75,10 @@ public partial class App : Application
             _settings = _settingsService.Load();
             Log("Settings loaded.");
 
+            // 初始化语言
+            LocalizationService.SwitchLanguage(_settings.Language);
+            Log($"Language set to: {_settings.Language}");
+
             // 初始化服务
             _inputMonitor = new InputMonitorService();
             _mediaPlayback = new MediaPlaybackService();
@@ -150,29 +154,29 @@ public partial class App : Application
     private void CreateTrayIcon()
     {
         // 构建右键菜单
-        _statusMenuItem = new MenuItem { Header = "⏱ 启动中...", IsEnabled = false };
+        _statusMenuItem = new MenuItem { Header = LocalizationService.Get("TrayStarting"), IsEnabled = false };
 
-        var settingsItem = new MenuItem { Header = "⚙ 设置" };
+        var settingsItem = new MenuItem { Header = LocalizationService.Get("TraySettings") };
         settingsItem.Click += (_, _) => OpenMainWindow();
 
-        var forceBreakItem = new MenuItem { Header = "🔄 立即休息" };
+        var forceBreakItem = new MenuItem { Header = LocalizationService.Get("TrayForceBreak") };
         forceBreakItem.Click += (_, _) =>
         {
             if (_activityTracker != null)
                 _notificationService?.ShowBreakReminder(_activityTracker.WorkedSeconds);
         };
 
-        _pauseMenuItem = new MenuItem { Header = "⏸ 暂停" };
+        _pauseMenuItem = new MenuItem { Header = LocalizationService.Get("TrayPause") };
         _pauseMenuItem.Click += (_, _) => TogglePause();
 
-        var resetItem = new MenuItem { Header = "🔄 重置计时" };
+        var resetItem = new MenuItem { Header = LocalizationService.Get("TrayReset") };
         resetItem.Click += (_, _) =>
         {
             _activityTracker?.Reset();
             UpdateTrayTooltip();
         };
 
-        var exitItem = new MenuItem { Header = "❌ 退出" };
+        var exitItem = new MenuItem { Header = LocalizationService.Get("TrayExit") };
         exitItem.Click += (_, _) => Shutdown();
 
         var contextMenu = new ContextMenu();
@@ -205,7 +209,7 @@ public partial class App : Application
             Log("Fallback: System icon assigned.");
         }
 
-        _trayIcon.ToolTipText = "番茄闹钟 - 休息提醒器";
+        _trayIcon.ToolTipText = LocalizationService.Get("TrayTooltip");
         _trayIcon.ContextMenu = contextMenu;
         Log("Tooltip and ContextMenu set.");
 
@@ -274,9 +278,12 @@ public partial class App : Application
         }
 
         if (_pauseMenuItem != null)
-            _pauseMenuItem.Header = _isPaused ? "▶ 继续" : "⏸ 暂停";
+            _pauseMenuItem.Header = _isPaused
+                ? LocalizationService.Get("TrayResume")
+                : LocalizationService.Get("TrayPause");
 
         _mainWindow?.UpdatePauseState(_isPaused);
+        _compactWindow?.UpdatePauseState(_isPaused);
 
         UpdateTrayTooltip();
     }
@@ -324,6 +331,12 @@ public partial class App : Application
 
         _compactWindow = new CompactWindow(_activityTracker, _settings, left, top);
         _compactWindow.ExpandRequested += ExitCompactMode;
+        _compactWindow.PauseResumeRequested += TogglePause;
+        _compactWindow.ResetRequested += () =>
+        {
+            _activityTracker?.Reset();
+            UpdateTrayTooltip();
+        };
         _compactWindow.Closed += (_, _) => _compactWindow = null;
         _compactWindow.Show();
 
@@ -361,6 +374,12 @@ public partial class App : Application
             if (_activityTracker == null) return;
             _compactWindow = new CompactWindow(_activityTracker, _settings, left, top);
             _compactWindow.ExpandRequested += ExitCompactMode;
+            _compactWindow.PauseResumeRequested += TogglePause;
+            _compactWindow.ResetRequested += () =>
+            {
+                _activityTracker?.Reset();
+                UpdateTrayTooltip();
+            };
             _compactWindow.Closed += (_, _) => _compactWindow = null;
             _compactWindow.Show();
         }
@@ -389,8 +408,16 @@ public partial class App : Application
 
     private void OnSettingsSaved(AppSettings newSettings)
     {
+        var oldLang = _settings.Language;
         _settings = newSettings;
         _settingsService?.Save(_settings);
+
+        // 如果语言变更，重建托盘菜单
+        if (oldLang != _settings.Language)
+        {
+            LocalizationService.SwitchLanguage(_settings.Language);
+            RebuildTrayMenu();
+        }
 
         _activityTracker?.UpdateSettings(_settings);
         _notificationService?.UpdateSettings(_settings);
@@ -399,6 +426,13 @@ public partial class App : Application
         _compactWindow?.UpdateSettings(_settings);
 
         UpdateTrayTooltip();
+    }
+
+    private void RebuildTrayMenu()
+    {
+        if (_trayIcon == null) return;
+        _trayIcon.ContextMenu = null;
+        CreateTrayIcon();
     }
 
     private void UpdateTrayTooltip()
@@ -412,19 +446,22 @@ public partial class App : Application
 
         string status;
         if (_isPaused)
-            status = "⏸ 已暂停";
+            status = "⏸ " + LocalizationService.Get("StatusPaused");
         else if (_activityTracker.IsIdle)
-            status = "😴 空闲中";
+            status = "😴 " + LocalizationService.Get("StatusIdle");
         else if (_activityTracker.IsActive)
-            status = "💻 工作中";
+            status = "💻 " + LocalizationService.Get("StatusWorking");
         else
-            status = "⏱ 监控中";
+            status = "⏱ " + LocalizationService.Get("StatusMonitoring");
 
-        _trayIcon.ToolTipText = $"番茄闹钟 {status}\n已工作: {worked:mm\\:ss} / {target:mm\\:ss}\n距离休息: {remaining:mm\\:ss}";
+        _trayIcon.ToolTipText = $"{LocalizationService.Get("TrayTooltip")} {status}\n{LocalizationService.Get("WorkedLabel")}: {worked:mm\\:ss} / {target:mm\\:ss}\n{LocalizationService.Get("CountdownLabel")}: {remaining:mm\\:ss}";
 
         if (_statusMenuItem != null)
         {
-            string statusText = _isPaused ? "已暂停" : (_activityTracker.IsIdle ? "空闲中" : "工作中");
+            string statusText;
+            if (_isPaused) statusText = LocalizationService.Get("StatusPaused");
+            else if (_activityTracker.IsIdle) statusText = LocalizationService.Get("StatusIdle");
+            else statusText = LocalizationService.Get("StatusWorking");
             _statusMenuItem.Header = $"⏱ {statusText} | {worked:mm\\:ss} / {target:mm\\:ss}";
         }
     }
